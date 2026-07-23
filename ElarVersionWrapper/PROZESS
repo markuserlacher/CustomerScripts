@@ -1,0 +1,53 @@
+# Application Version Guard & Wrapper Process (`ElarAdvanced`)
+
+## Overview
+`ElarAdvanced` is a legacy client application that interacts with a backend database. When a backend update takes place (typically over a weekend), older client versions must be prevented from connecting to avoid data corruption or application errors.
+
+Since standard software distribution tools may experience deployment delays, a local **Self-Healing Wrapper Architecture** is used to enforce a client-side expiration date ("Time-Bomb") based on a local `version.ini` file.
+
+---
+
+## Key Components
+
+| File / Artifact | Role | Description |
+| :--- | :--- | :--- |
+| **`ElarAdvanced.exe`** | **Wrapper** | The executable visible to the user. Validates the expiration date before starting the core app. |
+| **`ElarAdvanced_core.exe`** | **Original Core** | The actual application binary (renamed from `ElarAdvanced.exe`). Executed only if validation passes. |
+| **`version.ini`** | **Configuration** | Local INI file defining the maximum valid timestamp (`ValidUntil`) and version metadata. |
+| **`ElarAdvanced_Wrapper.ps1`** | **Source Code** | PowerShell template containing the date-check logic and UI pop-up prompts. |
+| **`Build-Wrapper.ps1`** | **Build Pipeline** | Post-installation automation script that extracts icons, renames binaries, and compiles the wrapper via `PS2EXE`. |
+
+---
+
+## Detailed Process Workflow
+
+### Phase 1: Client Software Distribution (Vendor Setup)
+1. **Deployment Push:** The automated deployment system (e.g., SCCM, Intune, Matrix42) pushes the new application update to the client machine.
+2. **File Extraction:** The vendor setup (`ElarSetup`) copies the new `ElarAdvanced.exe` and an updated `version.ini` into `C:\Program Files (x86)\ElarAdvanced`.
+3. **Legacy Artifact State:** The previously compiled `ElarAdvanced_core.exe` from the previous version remains in the directory as an orphaned file ("legacy core").
+
+---
+
+### Phase 2: Post-Install Build Execution (`Build-Wrapper.ps1`)
+Immediately following the software installation, the deployment tool executes `Build-Wrapper.ps1` as a post-installation task:
+
+1. **Version Analysis:**
+   * Reads the `FileVersion` / `ProductVersion` of the newly installed `ElarAdvanced.exe`.
+   * Reads the version of the existing `ElarAdvanced_core.exe` (if present).
+2. **Update Detection:**
+   * **Case A (New Setup Detected):** If `ElarAdvanced.exe` has a higher version than `ElarAdvanced_core.exe`, the script deletes the old `_core.exe` legacy file and renames the new `ElarAdvanced.exe` to `ElarAdvanced_core.exe`.
+   * **Case B (First-Time Setup):** If no `_core.exe` exists, the script renames `ElarAdvanced.exe` directly to `ElarAdvanced_core.exe`.
+   * **Case C (Re-Run / No Update):** If the core file is already up to date, the binary is preserved.
+3. **Asset & Icon Extraction:**
+   * Extracts the original high-resolution application icon from `ElarAdvanced_core.exe` and saves it temporarily as `ElarAdvanced.ico`.
+4. **Wrapper Compilation:**
+   * Compiles `ElarAdvanced_Wrapper.ps1` into a new, windowless `ElarAdvanced.exe` using `PS2EXE`.
+   * Transfers the original icon, file properties, and assembly version metadata onto the newly generated wrapper executable.
+   * Deletes the temporary `.ico` file.
+5. **Configuration Finalization:**
+   * Copies the new `version.ini` and sets the updated `ValidUntil` expiration timestamp (e.g., 30 days from the build date).
+
+---
+
+### Phase 3: Application Launch (User Interaction)
+When a user launches `ElarAdvanced.exe`, the following execution path occurs:
