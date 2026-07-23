@@ -1,5 +1,5 @@
 # ==============================================================================
-# Script:       Build-Wrapper.ps1
+# Script:       Elar_Build-Wrapper.ps1
 # Description:  Build-Skript für ElarAdvanced Wrapper mit Versionsvergleich.
 # ==============================================================================
 
@@ -7,12 +7,12 @@ Set-ExecutionPolicy -Scope Process Bypass -Force
 
 # Konfiguration
 $targetDir = "C:\Program Files (x86)\ElarAdvanced"
-$apps      = @("ElarAdvanced", "ArchivExtAdvanced", "ArchivIntAdvanced")
-$validDays = 30  # Standard-Gültigkeit ab heute in Tagen
+$apps      = @("ElarAdvanced", "ArchivExtAdvanced", "ArchivIntAdvanced", "IdxAdvanced")
+$validDays = 30000  # Standard-Gültigkeit ab heute in Tagen
 
 # Quell-Pfade (im Ordner, wo dieses Build-Skript ausgeführt wird)
 $scriptLocalDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
-$wrapperSource  = Join-Path $scriptLocalDir "ElarAdvanced_Wrapper.ps1"
+$wrapperSource  = Join-Path $scriptLocalDir "Wrapper.ps1"
 $iniSource      = Join-Path $scriptLocalDir "version.ini"
 $iniTarget      = Join-Path $targetDir "version.ini"
 
